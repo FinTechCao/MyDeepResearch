@@ -10,7 +10,11 @@ const model = getModel('errorAnalyzer');
 const responseSchema = z.object({
   recap: z.string().describe('Recap of the actions taken and the steps conducted'),
   blame: z.string().describe('Which action or the step was the root cause of the answer rejection'),
-  improvement: z.string().describe('Suggested key improvement for the next iteration, do not use bullet points, be concise and hot-take vibe.')
+  improvement: z.string().describe('Suggested key improvement for the next iteration, do not use bullet points, be concise and hot-take vibe.'),
+  questionsToAnswer: z.array(
+      z.string().describe("each question must be a single line, concise and clear. not composite or compound, less than 20 words.")
+    ).max(2)
+      .describe("List of most important reflect questions to fill the knowledge gaps"),
 });
 
 
@@ -93,7 +97,12 @@ The answer is not definitive and fails to provide the requested information.  La
   
   "blame": "The root cause of failure was getting stuck in a repetitive search pattern without adapting the strategy. Steps 4-5 repeated the same search, and step 6 deviated to less reliable entertainment sources instead of exploring business journals, news articles, or professional databases. Additionally, the process didn't attempt to triangulate age through indirect information like education history or career milestones.",
   
-  "improvement": "1. Avoid repeating identical searches and implement a strategy to track previously searched terms. 2. When direct age/birthdate searches fail, try indirect approaches like: searching for earliest career mentions, finding university graduation years, or identifying first company founding dates. 3. Focus on high-quality business sources and avoid entertainment websites for professional information. 4. Consider using industry event appearances or conference presentations where age-related context might be mentioned. 5. If exact age cannot be determined, provide an estimated range based on career timeline and professional achievements."
+  "improvement": "1. Avoid repeating identical searches and implement a strategy to track previously searched terms. 2. When direct age/birthdate searches fail, try indirect approaches like: searching for earliest career mentions, finding university graduation years, or identifying first company founding dates. 3. Focus on high-quality business sources and avoid entertainment websites for professional information. 4. Consider using industry event appearances or conference presentations where age-related context might be mentioned. 5. If exact age cannot be determined, provide an estimated range based on career timeline and professional achievements.",
+  
+  "questionsToAnswer": [
+    "What alternative professional databases or news archives could provide reliable biographical information?",
+    "How can we use education history or career milestones to estimate age range?"
+  ]
 }
 </output>
 </example>

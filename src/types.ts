@@ -97,8 +97,6 @@ export interface ReadResponse {
 }
 
 
-
-
 export type EvaluationResponse = {
   pass: boolean;
   think: string;
@@ -121,6 +119,7 @@ export type ErrorAnalysisResponse = {
   recap: string;
   blame: string;
   improvement: string;
+  questionsToAnswer: string[];
 };
 
 export interface SearchResult {
@@ -160,6 +159,13 @@ export interface StreamMessage {
 }
 
 // OpenAI API Types
+export interface Model {
+  id: string;
+  object: 'model';
+  created: number;
+  owned_by: string;
+}
+
 export interface ChatCompletionRequest {
   model: string;
   messages: Array<{
@@ -214,8 +220,8 @@ export interface ChatCompletionChunk {
 }
 
 // Tracker Types
-import { TokenTracker } from './utils/token-tracker';
-import { ActionTracker } from './utils/action-tracker';
+import {TokenTracker} from './utils/token-tracker';
+import {ActionTracker} from './utils/action-tracker';
 
 export interface TrackerContext {
   tokenTracker: TokenTracker;

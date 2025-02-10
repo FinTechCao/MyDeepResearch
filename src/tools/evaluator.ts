@@ -231,6 +231,107 @@ Question: ${JSON.stringify(question)}
 Answer: ${JSON.stringify(answer)}`;
 }
 
+
+const questionEvaluationSchema = z.object({
+  needsFreshness: z.boolean().describe('Whether the question requires freshness check'),
+  needsPlurality: z.boolean().describe('Whether the question requires plurality check'),
+  reasoning: z.string().describe('Explanation of why these checks are needed or not needed')
+});
+
+function getQuestionEvaluationPrompt(question: string): string {
+  return `You are an evaluator that determines if a question requires freshness and/or plurality checks in addition to the required definitiveness check.
+
+<evaluation_types>
+1. freshness - Checks if the answer needs to be current and up-to-date
+2. plurality - Checks if the answer needs to provide multiple items or a specific count
+Note: Definitiveness check is always applied regardless of the question type
+</evaluation_types>
+
+<rules>
+1. Freshness Evaluation:
+   - Required for questions about current state, recent events, or time-sensitive information
+   - Required for: prices, versions, leadership positions, status updates
+   - Look for terms: "current", "latest", "recent", "now", "today", "new"
+   - Consider company positions, product versions, market data time-sensitive
+
+2. Plurality Evaluation:
+   - Required when question asks for multiple items or specific counts
+   - Check for: numbers ("5 examples"), plural nouns, list requests
+   - Look for: "all", "list", "enumerate", "examples", plural forms
+   - Required when question implies completeness ("all the reasons", "every factor")
+
+3. Ordering Rules:
+   - Always include definitive check in the order
+   - Prioritize freshness for "current/latest" queries as outdated info invalidates other aspects
+   - Prioritize plurality for explicit numbered requests when freshness isn't critical
+   - Default order is: definitive -> freshness -> plurality
+</rules>
+
+<examples>
+Question: "What is the current CEO of OpenAI?"
+Evaluation: {
+  "needsFreshness": true,
+  "needsPlurality": false,
+  "reasoning": "Question asks about current leadership position which requires freshness check. No plurality check needed as it asks for a single position."
+}
+
+Question: "List all the AI companies in Berlin"
+Evaluation: {
+  "needsFreshness": false,
+  "needsPlurality": true,
+  "reasoning": "Question asks for a comprehensive list ('all') which requires plurality check. No freshness check needed as it's not time-sensitive."
+}
+
+Question: "What are the top 5 latest AI models released by OpenAI?"
+Evaluation: {
+  "needsFreshness": true,
+  "needsPlurality": true,
+  "reasoning": "Question requires freshness check for 'latest' releases and plurality check for 'top 5' items."
+}
+
+Question: "Who created Python?"
+Evaluation: {
+  "needsFreshness": false,
+  "needsPlurality": false,
+  "reasoning": "Simple factual question requiring only definitiveness check. No time sensitivity or multiple items needed."
+}
+</examples>
+
+Now evaluate this question:
+Question: ${JSON.stringify(question)}`;
+}
+
+export async function evaluateQuestion(
+  question: string,
+  tracker?: TokenTracker
+): Promise<EvaluationType[]> {
+  try {
+    const result = await generateObject({
+      model: getModel('evaluator'),
+      schema: questionEvaluationSchema,
+      prompt: getQuestionEvaluationPrompt(question),
+      maxTokens: getMaxTokens('evaluator')
+    });
+
+    (tracker || new TokenTracker()).trackUsage('evaluator', result.usage?.totalTokens || 0);
+    console.log('Question Evaluation:', result.object);
+
+    // Always include definitive in types
+    const types: EvaluationType[] = ['definitive'];
+    if (result.object.needsFreshness) types.push('freshness');
+    if (result.object.needsPlurality) types.push('plurality');
+
+    console.log('Question Metrics:', types)
+
+    // Always evaluate definitive first, then freshness (if needed), then plurality (if needed)
+    return types;
+  } catch (error) {
+    // Default to all evaluations in standard order if evaluation fails
+    console.error('Question evaluation failed:', error);
+    return ['definitive', 'freshness', 'plurality'];
+  }
+}
+
 export async function evaluateAnswer(
   question: string,
   answer: string,
